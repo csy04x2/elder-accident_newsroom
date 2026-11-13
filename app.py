@@ -12,7 +12,8 @@ from shapely import wkt
 from shapely.geometry import mapping
 from streamlit_folium import st_folium
 
-from newsroom.data import dataset_state, load_data, metric_summary, spatial_summary\nfrom newsroom.recommendation import fact_sheet, recommend, search_sources, validate_hint_url
+from newsroom.data import dataset_state, load_data, metric_summary, spatial_summary
+from newsroom.recommendation import fact_sheet, recommend, search_sources, validate_hint_url
 
 st.set_page_config(page_title="서울 고령 보행자 데이터 뉴스룸", page_icon="🚶", layout="wide")
 st.markdown(
@@ -90,7 +91,8 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
     if st.session_state.get("s02_signature") != signature:
         st.session_state["s02_signature"] = signature
         st.session_state.pop("s02_search", None)
-        st.session_state.pop("s02_ideas", None)\n        st.session_state.pop("s02_selected_idea", None)
+        st.session_state.pop("s02_ideas", None)
+        st.session_state.pop("s02_selected_idea", None)
     left, right = st.columns([1, 1])
     with left:
         search_clicked = st.button("최신 자료 다시 검색", use_container_width=True, disabled=not categories)
