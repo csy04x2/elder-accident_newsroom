@@ -14,6 +14,7 @@ from streamlit_folium import st_folium
 
 from newsroom.data import dataset_state, load_data, metric_summary, spatial_summary
 from newsroom.recommendation import fact_sheet, recommend, search_sources, validate_hint_url
+from newsroom.persistence import engine_from_env, recent_saved_ideas, save_idea
 
 st.set_page_config(page_title="서울 고령 보행자 데이터 뉴스룸", page_icon="🚶", layout="wide")
 st.markdown(
@@ -93,6 +94,7 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
         st.session_state.pop("s02_search", None)
         st.session_state.pop("s02_ideas", None)
         st.session_state.pop("s02_selected_idea", None)
+        st.session_state.pop("s02_selected_index", None)
     left, right = st.columns([1, 1])
     with left:
         search_clicked = st.button("최신 자료 다시 검색", use_container_width=True, disabled=not categories)
@@ -160,8 +162,55 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
                         st.markdown(f'[{sid} · {src["title"]}]({src["source_url"]})')
                 if st.button("취재 후보로 선택", key=f"idea_{idx}"):
                     st.session_state["s02_selected_idea"] = idea
-                    st.success("선택한 후보를 이 세션에 보관했습니다. S03 기사 작성 연결은 다음 단계에서 구현합니다.")
-    st.caption("검색 제목·기자 메모만으로 READY를 부여하지 않습니다. 원문 확인·추가 취재 및 검증된 Fact Sheet 저장은 후속 단계에서 진행합니다.")
+                    st.session_state["s02_selected_index"] = idx - 1
+                    st.success("선택한 후보를 이 세션에 보관했습니다. 아래에서 원문 대조 후 저장할 수 있습니다.")
+        if st.session_state.get("s02_selected_index") is not None:
+            selected_idx = st.session_state["s02_selected_index"]
+            if selected_idx < len(ideas):
+                selected = ideas[selected_idx]
+                st.divider()
+                st.subheader("선택한 기사거리 저장")
+                st.write(selected["title"])
+                st.caption("검색 목록은 RSS 제목 정보만 확인됐습니다. 링크의 실제 원문을 직접 열어 동일 문구를 확인한 경우에만 대조 발췌문을 입력하세요.")
+                excerpts = {}
+                for sid in selected["source_ids"]:
+                    src = refs.get(sid)
+                    if not src:
+                        continue
+                    with st.expander(f'원문 대조 · {sid} · {src["title"]}'):
+                        st.link_button("원문 링크 열어 확인", src["source_url"], key=f'check_url_{sid}')
+                        checked = st.checkbox("발행사 또는 공식 기관 원문에서 아래 발췌문을 직접 대조했습니다", key=f"verified_{sid}")
+                        snippet = st.text_area("원문에 실제로 있는 문구 (최대 4,000자)", key=f"excerpt_{sid}", max_chars=4000)
+                        if checked and snippet.strip():
+                            excerpts[sid] = snippet.strip()
+                        elif checked and not snippet.strip():
+                            st.warning("대조 확인을 표시했다면 실제 원문 발췌문을 입력해야 합니다.")
+                        elif snippet.strip():
+                            st.info("대조 확인을 체크하지 않아 이 자료는 METADATA_ONLY로 저장됩니다.")
+                if st.button("선택 기사거리 DB 저장", type="primary", key="s02_save"):
+                    try:
+                        engine = engine_from_env()
+                        try:
+                            new_id = save_idea(engine, facts, selected, search["sources"], excerpts)
+                        finally:
+                            engine.dispose()
+                        st.success(f"DB 저장 완료 · 기사거리 ID #{new_id} · S03 기능은 아직 구현되지 않았습니다.")
+                        st.session_state["s02_last_saved_id"] = new_id
+                    except Exception as exc:
+                        st.error(f"DB 저장 실패 ({type(exc).__name__}). MySQL 연결·db/schema.sql 적용 여부를 확인하세요. 저장 성공으로 처리하지 않았습니다.")
+    if st.button("DB에 저장된 기사거리 보기", key="s02_list_saved"):
+        try:
+            engine = engine_from_env()
+            try:
+                st.session_state["s02_saved_rows"] = recent_saved_ideas(engine)
+            finally:
+                engine.dispose()
+        except Exception as exc:
+            st.error(f"저장 목록 조회 실패 ({type(exc).__name__}). DB 접속 설정을 확인하세요.")
+    for row in st.session_state.get("s02_saved_rows", []):
+        st.caption(f'#{row["id"]} · {row["readiness"]} · {row["created_at"]}')
+        st.markdown(f'**{row["title"]}** · {row["angle"][:200]}')
+    st.caption("수동 원문 대조는 발췌 확인 기록일 뿐 기사 전체 검증이 아닙니다. READY 판정 및 S03 기사 작성은 아직 미구현입니다.")
     st.stop()
 
 if st.session_state.get("placeholder_page"):
