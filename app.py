@@ -15,6 +15,7 @@ from streamlit_folium import st_folium
 from newsroom.data import dataset_state, load_data, metric_summary, spatial_summary
 from newsroom.recommendation import fact_sheet, recommend, search_sources, validate_hint_url
 from newsroom.persistence import engine_from_env, recent_saved_ideas, save_idea
+from newsroom.article_ui import render as render_article_editor
 
 st.set_page_config(page_title="서울 고령 보행자 데이터 뉴스룸", page_icon="🚶", layout="wide")
 st.markdown(
@@ -49,7 +50,16 @@ with st.sidebar:
     st.divider()
     if st.button("AI 기사거리 추천", use_container_width=True):
         st.session_state["placeholder_page"] = "AI 기사거리 추천"
-    st.caption("S03–S05는 다음 구현 단계에서 연결됩니다.")
+    if st.button("기사 작성·편집", use_container_width=True):
+        st.session_state["placeholder_page"] = "기사 작성·편집"
+    st.caption("S04–S05는 다음 구현 단계에서 연결됩니다.")
+
+if st.session_state.get("placeholder_page") == "기사 작성·편집":
+    if st.button("← 뉴스룸 홈으로 돌아가기", key="s03_back"):
+        st.session_state.pop("placeholder_page", None)
+        st.rerun()
+    render_article_editor()
+    st.stop()
 
 # 화면 전환 상태는 S01에서 선택한 연도·자치구를 유지한다.
 if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
@@ -206,6 +216,7 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
                             engine.dispose()
                         st.success(f"DB 저장 완료 · 기사거리 ID #{new_id} · S03 기능은 아직 구현되지 않았습니다.")
                         st.session_state["s02_last_saved_id"] = new_id
+                        st.session_state["s03_requested_idea"] = new_id
                     except Exception as exc:
                         st.error(f"DB 저장 실패 ({type(exc).__name__}). MySQL 연결·db/schema.sql 적용 여부를 확인하세요. 저장 성공으로 처리하지 않았습니다.")
     if st.button("DB에 저장된 기사거리 보기", key="s02_list_saved"):
@@ -220,6 +231,10 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
     for row in st.session_state.get("s02_saved_rows", []):
         st.caption(f'#{row["id"]} · {row["readiness"]} · {row["created_at"]}')
         st.markdown(f'**{row["title"]}** · {row["angle"][:200]}')
+        if st.button("이 기사거리로 작성", key=f's02_to_s03_{row["id"]}'):
+            st.session_state["s03_requested_idea"] = int(row["id"])
+            st.session_state["placeholder_page"] = "기사 작성·편집"
+            st.rerun()
     st.caption("수동 원문 대조는 발췌 확인 기록일 뿐 기사 전체 검증이 아닙니다. READY 판정 및 S03 기사 작성은 아직 미구현입니다.")
     st.stop()
 
