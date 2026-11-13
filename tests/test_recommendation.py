@@ -1,4 +1,7 @@
 """S02 추천은 확인 가능한 계산과 외부 검색 메타데이터를 구분한다."""
+import json
+
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -31,3 +34,15 @@ def test_url_is_unverified_hint():
     assert validate_hint_url("https://example.com/a") == "https://example.com/a"
     with pytest.raises(ValueError):
         validate_hint_url("file:///etc/passwd")
+
+
+def test_fact_sheet_numpy_year_is_json_serializable():
+    """S02 year selected from pandas unique() may be numpy.int64."""
+    panel = pd.DataFrame([{"사고연도": 2025, "자치구명": "동대문구",
+                           "고령보행자_사고건수": 132, "고령인구": 72767,
+                           "고령보행자_사망자수": 4}])
+    links = pd.DataFrame([{"사고연도": 2025, "자치구명": "동대문구",
+                           "다발지역FID": 1, "경계중첩": 0}])
+    result = fact_sheet(panel, links, np.int64(2025), "동대문구")
+    assert type(result["accident_year"]) is int
+    assert json.loads(json.dumps({"fact_sheet": result}, ensure_ascii=False))["fact_sheet"]["accident_year"] == 2025

@@ -33,6 +33,9 @@ LIMITATIONS = (
 
 
 def fact_sheet(panel: pd.DataFrame, links: pd.DataFrame, year: int, district: str) -> dict:
+    # pandas/numpy integer scalars cannot be serialized with json.dumps.
+    year = int(year)
+    district = str(district)
     rows = panel[panel["사고연도"] == year]
     if district != "서울 전체":
         rows = rows[rows["자치구명"] == district]
