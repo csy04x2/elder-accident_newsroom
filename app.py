@@ -27,6 +27,9 @@ st.markdown(
     .block-container {max-width:1220px;padding-top:2.5rem;}
     [data-testid="stSidebar"] {background:#142238;}
     [data-testid="stSidebar"] * {color:#edf2fb;}
+    /* Sidebar buttons have a light background; override the sidebar's white text. */
+    [data-testid="stSidebar"] button,
+    [data-testid="stSidebar"] button * {color:#142238 !important;}
     .eyebrow {font-size:13px;letter-spacing:.09em;color:#64748b;font-weight:700;}
     .intro {color:#475467;font-size:15px;line-height:1.7;}
     .section-marker {padding-top:16px;color:#a34a19;font-size:13px;font-weight:700;letter-spacing:.08em;}
