@@ -26,6 +26,8 @@ st.markdown(
     .intro {color:#475467;font-size:15px;line-height:1.7;}
     .section-marker {padding-top:16px;color:#a34a19;font-size:13px;font-weight:700;letter-spacing:.08em;}
     .small-note {font-size:12px;color:#64748b;line-height:1.65;}
+    [data-testid="stSidebar"] a[href^="#"] {display:block;padding:9px 12px;border-radius:7px;text-decoration:none;transition:background .15s ease;}
+    [data-testid="stSidebar"] a[href^="#"].active-analysis {background:#eaf1ff;color:#17375e!important;font-weight:700;}
     </style>""", unsafe_allow_html=True
 )
 
@@ -195,3 +197,59 @@ st.info("보호구역 경계가 없는 시설이 있고 사고다발지역 선�
 st.markdown("원자료·분석 방법·한계: [elder_accident 연구 저장소](https://github.com/csy04x2/elder_accident)")
 st.divider()
 st.caption("이 화면은 기존 가공자료를 읽는 S01 첫 구현입니다. 새 공식 통계 자동 수집, 정책·뉴스 검색, AI 기사거리 추천과 기사 승인·공개는 아직 연결하지 않았습니다.")
+
+# 분석 섹션을 모두 렌더링한 다음 실제 스크롤 위치에 맞춰 사이드바 링크를 강조합니다.
+# st.html의 JS는 Streamlit 본문과 같은 document에서 실행됩니다 (>=1.52).
+st.html("""
+<script>
+(() => {
+  // Streamlit 재실행 시 이전 이벤트 리스너를 정리합니다.
+  if (window.__elderNewsroomScrollSpyCleanup) {
+    window.__elderNewsroomScrollSpyCleanup();
+  }
+  const ids = ["protect", "where", "spatial", "policy"];
+  const markers = ids.map(id => document.getElementById(id));
+  const links = ids.map(id =>
+    document.querySelector('[data-testid="stSidebar"] a[href="#' + id + '"]')
+  );
+  if (markers.some(el => !el) || links.some(el => !el)) return;
+
+  function refresh() {
+    // 화면 상단에서 180px 아래까지 진입한 마지막 분석 섹션을 활성화.
+    // Streamlit의 실제 스크롤 컨테이너 종류와 무관하게 좌표로 판정.
+    let active = 0;
+    markers.forEach((element, index) => {
+      if (element.getBoundingClientRect().top <= 180) active = index;
+    });
+    // 짧은 마지막 섹션도 맨 아래까지 내려가면 선택되도록 처리.
+    const scroller = document.querySelector('[data-testid="stMain"]') ||
+                     document.scrollingElement;
+    if (scroller && scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 16) {
+      active = ids.length - 1;
+    }
+    links.forEach((link, index) => {
+      link.classList.toggle("active-analysis", index === active);
+      if (index === active) link.setAttribute("aria-current", "location");
+      else link.removeAttribute("aria-current");
+    });
+  }
+
+  // capture를 써서 본문 내부 스크롤에도 반응하고 스크롤 시 앱을 재실행하지 않습니다.
+  let frame = 0;
+  const update = () => {
+    if (!frame) frame = requestAnimationFrame(() => {
+      frame = 0;
+      refresh();
+    });
+  };
+  document.addEventListener("scroll", update, true);
+  window.addEventListener("resize", update);
+  refresh();
+  window.__elderNewsroomScrollSpyCleanup = () => {
+    document.removeEventListener("scroll", update, true);
+    window.removeEventListener("resize", update);
+    if (frame) cancelAnimationFrame(frame);
+  };
+})();
+</script>
+""", unsafe_allow_javascript=True)
