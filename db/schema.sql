@@ -1,4 +1,4 @@
--- MySQL 8.x; README 5-table model. Apply once to a dedicated empty database.
+-- MySQL 8.x; dedicated database for elder-accident_newsroom.\n-- Run this script in MySQL Workbench (not in the rentwatch_news database).\nCREATE DATABASE IF NOT EXISTS elder_accident_newsroom CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;\nUSE elder_accident_newsroom;\n\n-- README 5-table model. Existing tables are not dropped.
 CREATE TABLE IF NOT EXISTS analysis_snapshots (
   id BIGINT AUTO_INCREMENT PRIMARY KEY,
   analysis_type VARCHAR(60) NOT NULL,
