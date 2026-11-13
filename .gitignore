@@ -1,0 +1,30 @@
+# 환경변수·비밀정보
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Python / 가상환경 / 테스트
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# 로컬 분석 데이터·생성물 (기존 elder_accident 저장소 참조)
+data/processed/
+data/raw/
+outputs/
+uploads/
+*.db
+*.sqlite3
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
