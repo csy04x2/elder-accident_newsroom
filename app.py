@@ -17,6 +17,7 @@ from newsroom.recommendation import fact_sheet, recommend, search_sources, valid
 from newsroom.persistence import engine_from_env, recent_saved_ideas, save_idea
 from newsroom.article_ui import render as render_article_editor
 from newsroom.review_ui import render as render_review
+from newsroom.public_ui import render as render_public_articles
 
 st.set_page_config(page_title="서울 고령 보행자 데이터 뉴스룸", page_icon="🚶", layout="wide")
 st.markdown(
@@ -55,7 +56,15 @@ with st.sidebar:
         st.session_state["placeholder_page"] = "기사 작성·편집"
     if st.button("자동 검수·편집장 승인", use_container_width=True):
         st.session_state["placeholder_page"] = "자동 검수·편집장 승인"
-    st.caption("S05 승인 기사 공개는 다음 단계에서 연결됩니다.")
+    if st.button("승인 기사", use_container_width=True):
+        st.session_state["placeholder_page"] = "승인 기사"
+
+if st.session_state.get("placeholder_page") == "승인 기사":
+    if st.button("← 뉴스룸 홈으로 돌아가기", key="s05_back"):
+        st.session_state.pop("placeholder_page", None)
+        st.rerun()
+    render_public_articles()
+    st.stop()
 
 if st.session_state.get("placeholder_page") == "자동 검수·편집장 승인":
     if st.button("← 뉴스룸 홈으로 돌아가기", key="s04_back"):
