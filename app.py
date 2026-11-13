@@ -104,6 +104,8 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
         with st.spinner("정책·보도 검색 중"):
             st.session_state["s02_search"] = search_sources(days, categories, keyword)
             st.session_state.pop("s02_ideas", None)
+            st.session_state.pop("s02_selected_idea", None)
+            st.session_state.pop("s02_selected_index", None)
     search = st.session_state.get("s02_search")
     if generate_clicked:
         try:
@@ -116,6 +118,8 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
                     st.session_state["s02_search"] = search
             with st.spinner("근거 범위 내 기사거리 구성 중"):
                 st.session_state["s02_ideas"] = recommend(facts, search, keyword, validated_url, memo)
+                st.session_state.pop("s02_selected_idea", None)
+                st.session_state.pop("s02_selected_index", None)
         except (ValueError, RuntimeError) as exc:
             st.error(str(exc))
         except Exception as exc:
