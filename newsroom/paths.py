@@ -1,4 +1,4 @@
-"""기존 elder_accident 가공 데이터 경로 설정. 파일 수집·복제는 하지 않습니다."""
+"""기존 분석 저장소 데이터 경로 설정."""
 import os
 from pathlib import Path
 
@@ -9,7 +9,10 @@ load_dotenv(ROOT_DIR / ".env")
 
 
 def processed_data_dir() -> Path:
-    """DATA_DIR가 없으면 저장소 내부 data/processed를 가리킵니다."""
-    configured = os.getenv("DATA_DIR", "data/processed")
-    path = Path(configured).expanduser()
-    return path if path.is_absolute() else ROOT_DIR / path
+    """명시한 DATA_DIR 또는 같은 project 폴더의 elder_accident를 사용."""
+    configured = os.getenv("DATA_DIR")
+    if configured:
+        location = Path(configured).expanduser()
+        return location if location.is_absolute() else ROOT_DIR / location
+    sibling = ROOT_DIR.parent / "elder_accident" / "data" / "processed"
+    return sibling if sibling.exists() else ROOT_DIR / "data" / "processed"
