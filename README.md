@@ -2,7 +2,7 @@
 
 > **서울 고령 보행자 교통사고의 최신 공식 현황을 브리핑하고, 심층 분석과 최신 정책·보도 검색을 결합해 기사거리를 발굴하며, 근거 있는 기사를 검수·승인 후 공개하는 데이터 뉴스룸.**
 
-- **문서 상태:** 설계안 (아직 서비스 코드 미구현)
+- **구현 상태:** S01 뉴스룸 홈 첫 구현 (기존 CSV 연결 · 로컬 실행 미검증). S02~S05 및 DB·AI 기능은 미구현
 - **대상 범위:** 서울시 고령 보행자 교통사고 및 노인보호구역
 - **기존 분석 기반:** [elder_accident](https://github.com/csy04x2/elder_accident)
 - **참고 프로젝트:** [RGF](https://github.com/csy04x2/RGF) (기사거리·정보 공백 발굴), [RentWatch Seoul](https://github.com/csy04x2/rentwatch-news) (Fact Sheet 기반 기사 생성·검수·승인)
@@ -390,14 +390,26 @@ erDiagram
 
 ## 7. 실행 방법
 
-**작성 예정**
+**S01 뉴스룸 홈 첫 구현 (2026-11-13):** 기존 `elder_accident/data/processed` CSV를 읽어 사고·사망·사고율·사망 비중을 브리핑하고, 아래에 연도별 추이·자치구 순위·사고다발지역/보호구역 지도·정책 검토 질문을 표시한다. 화면의 좌측 분석 앵커는 마련했지만 **스크롤에 따른 현재 섹션 자동 강조는 아직 미구현**이다. 최신 공식 자료의 정기 수집, 정책·언론보도 검색, 기사거리 추천, 기사 작성·승인 및 DB 스키마도 미구현이다.
 
-현재 이 저장소에는 설계 문서만 있으며 실행 가능한 앱 코드와 DB 마이그레이션은 아직 없다.
+**Windows PowerShell (두 저장소를 같은 project 폴더에 내려받은 경우):**
+
+```powershell
+cd "C:\Users\EZ\OneDrive\바탕 화면\project\elder-accident_newsroom"
+python -m pip install -r requirements.txt
+python -m streamlit run app.py
+```
+
+기존 `elder_accident`가 다른 폴더에 있다면 `.env.example`을 `.env`로 복사하고 `DATA_DIR`에 **가공 CSV가 있는 폴더 경로**를 지정한다. 해당 설정 없이 같은 상위 폴더에서 실행하면 `../elder_accident/data/processed`를 우선 읽는다. 필수 파일은 `data/README.md`를 참조한다.
+
+API 서버의 최소 헬스체크는 별개로 `python -m uvicorn api.main:app --reload`로 실행할 수 있으나 화면에서 아직 사용하지 않는다.
+
+**검증 상태:** GitHub main 커밋 반영까지 확인했으며 로컬 Streamlit 실행·테스트 통과 여부는 아직 확인하지 않았다.
 
 ---
 
 ## 8. 테스트 항목
 
-**작성 예정**
+**현재:** `tests/test_smoke.py`에 기존 집계의 분모, 자료 없는 전년 비교, 사고다발지역 중첩 개수 및 FastAPI 헬스체크를 확인하는 테스트 코드를 추가했다. 실행 결과는 미확인이다. `python -m pytest -q`로 실행할 수 있다.
 
-구현 후 현황 브리핑 최신 기준일 표시, 스크롤·사이드바 동기화, 정책·보도 재검색, 기자 입력 반영, 기사 수치·근거 검증, 오류 기사 승인 차단, 수정 후 재검수, 편집장 승인 및 승인 기사만 공개되는 전체 경로를 검증할 예정이다.
+**향후 검증:** 현황 브리핑 최신 기준일 표시, 스크롤·사이드바 동기화, 정책·보도 재검색, 기자 입력 반영, 기사 수치·근거 검증, 오류 기사 승인 차단, 수정 후 재검수, 편집장 승인 및 승인 기사만 공개되는 전체 경로를 검증할 예정이다.
