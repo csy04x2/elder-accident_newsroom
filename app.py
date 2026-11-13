@@ -18,6 +18,7 @@ from newsroom.persistence import engine_from_env, recent_saved_ideas, save_idea
 from newsroom.article_ui import render as render_article_editor
 from newsroom.review_ui import render as render_review
 from newsroom.public_ui import render as render_public_articles
+from newsroom.update_status import read_daily_status, search_from_daily
 
 st.set_page_config(page_title="서울 고령 보행자 데이터 뉴스룸", page_icon="🚶", layout="wide")
 st.markdown(
@@ -115,6 +116,26 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
     st.caption(f'분석 자료 기준: {year}년 · 산식 확인: {facts["calculation_status"]} · 개별 사고의 보호구역 밖 발생 비율이 아닙니다.')
     st.divider()
     st.subheader("최근 정책·보도 검색")
+    daily_status = read_daily_status()
+    if daily_status:
+        news_status = daily_status.get("news", {})
+        data_status = daily_status.get("data", {})
+        st.caption(
+            f'정기 확인: {daily_status.get("last_checked_at", "미실행")} · '
+            f'뉴스 검색 {news_status.get("status", "미확인")} · '
+            f'새 검색 항목 {news_status.get("new_count", 0)}건 · '
+            f'로컬 분석 CSV {data_status.get("status", "미확인")} '
+            f'(최신 사고연도: {data_status.get("latest_accident_year", "미상")})'
+        )
+        if data_status.get("changed"):
+            st.info("분석 CSV 변경 감지: " + ", ".join(data_status["changed"]) +
+                    " · 새 데이터의 산식과 출처는 기자가 확인해야 합니다.")
+        if data_status.get("missing"):
+            st.warning("분석 CSV 누락: " + ", ".join(data_status["missing"]))
+        if news_status.get("errors"):
+            st.warning("정기 검색 일부/전체 실패. 이전 성공 자료 유지: " + " / ".join(news_status["errors"]))
+    else:
+        st.caption("정기 갱신 실행 기록이 없습니다. Windows 작업 스케줄러 등록 후 확인 시각을 표시합니다.")
     categories = st.multiselect("검색 범주", ["정책", "보도자료", "언론"], default=["정책", "보도자료", "언론"])
     keyword = st.text_input("추가 검색 키워드 (선택)", max_chars=80, placeholder="예: 청량리 노인보호구역")
     with st.expander("기자가 추가한 취재 단서 (선택)"):
@@ -127,6 +148,12 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
         st.session_state.pop("s02_ideas", None)
         st.session_state.pop("s02_selected_idea", None)
         st.session_state.pop("s02_selected_index", None)
+    # Use the daily fetch only for its exact conditions; custom searches stay manual.
+    if (st.session_state.get("s02_search") is None and days == 90 and
+            set(categories) == {"정책", "보도자료", "언론"} and not keyword.strip()):
+        cached = search_from_daily(daily_status)
+        if cached:
+            st.session_state["s02_search"] = cached
     left, right = st.columns([1, 1])
     with left:
         search_clicked = st.button("최신 자료 다시 검색", use_container_width=True, disabled=not categories)
