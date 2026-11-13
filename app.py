@@ -12,7 +12,7 @@ from shapely import wkt
 from shapely.geometry import mapping
 from streamlit_folium import st_folium
 
-from newsroom.data import dataset_state, load_data, metric_summary, spatial_summary
+from newsroom.data import dataset_state, load_data, metric_summary, spatial_summary\nfrom newsroom.recommendation import fact_sheet, recommend, search_sources, validate_hint_url
 
 st.set_page_config(page_title="서울 고령 보행자 데이터 뉴스룸", page_icon="🚶", layout="wide")
 st.markdown(
@@ -47,10 +47,123 @@ with st.sidebar:
     st.divider()
     if st.button("AI 기사거리 추천", use_container_width=True):
         st.session_state["placeholder_page"] = "AI 기사거리 추천"
-    st.caption("S02–S05는 다음 구현 단계에서 연결됩니다.")
+    st.caption("S03–S05는 다음 구현 단계에서 연결됩니다.")
+
+# 화면 전환 상태는 S01에서 선택한 연도·자치구를 유지한다.
+if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
+    st.title("AI 기사거리 추천")
+    st.caption("S02 · 기존 분석 결과 + 최근 정책·보도 검색 · 데스크톱 기준")
+    if st.button("← 뉴스룸 홈으로 돌아가기"):
+        st.session_state.pop("placeholder_page", None)
+        st.rerun()
+
+    state = dataset_state()
+    if state["missing"]:
+        st.error("기초 분석 CSV가 없습니다: " + ", ".join(state["missing"]))
+        st.stop()
+    dataset = load_data(state["directory"], state["versions"])
+    panel, links = dataset["panel"], dataset["links"]
+    years = sorted(panel["사고연도"].dropna().astype(int).unique())
+    districts = sorted(panel["자치구명"].dropna().unique())
+    col1, col2, col3 = st.columns([1, 1, 2])
+    with col1:
+        year = st.selectbox("분석 사고연도", years, index=len(years)-1, key="s02_year")
+    with col2:
+        district = st.selectbox("분석 지역", ["서울 전체"] + districts, key="s02_district")
+    with col3:
+        days = st.selectbox("최근 검색 기간", [30, 90, 365], index=1, format_func=lambda n: f"최근 {n}일")
+    facts = fact_sheet(panel, links, year, district)
+    st.subheader("분석 근거")
+    x1, x2, x3 = st.columns(3)
+    x1.metric("고령 보행자 사고", str(facts["accidents"]) if facts["accidents"] is not None else "자료 없음")
+    x2.metric("고령인구 1만 명당 사고", str(facts["accidents_per_10000_residents"]) if facts["accidents_per_10000_residents"] is not None else "자료 없음")
+    x3.metric("보호구역 경계와 비중첩된 사고다발지역", f'{facts["nonoverlap_with_available_zone_boundaries"]}/{facts["hotspot_polygons"]}곳')
+    st.caption(f'분석 자료 기준: {year}년 · 산식 확인: {facts["calculation_status"]} · 개별 사고의 보호구역 밖 발생 비율이 아닙니다.')
+    st.divider()
+    st.subheader("최근 정책·보도 검색")
+    categories = st.multiselect("검색 범주", ["정책", "보도자료", "언론"], default=["정책", "보도자료", "언론"])
+    keyword = st.text_input("추가 검색 키워드 (선택)", max_chars=80, placeholder="예: 청량리 노인보호구역")
+    with st.expander("기자가 추가한 취재 단서 (선택)"):
+        url_input = st.text_input("참고할 원문 URL (미검증 단서)", max_chars=2000)
+        memo = st.text_area("취재 메모·자료 내용 (검증되지 않은 입력)", height=120, max_chars=3000)
+    signature = (year, district, days, tuple(categories), keyword.strip())
+    if st.session_state.get("s02_signature") != signature:
+        st.session_state["s02_signature"] = signature
+        st.session_state.pop("s02_search", None)
+        st.session_state.pop("s02_ideas", None)
+    left, right = st.columns([1, 1])
+    with left:
+        search_clicked = st.button("최신 자료 다시 검색", use_container_width=True, disabled=not categories)
+    with right:
+        generate_clicked = st.button("AI 기사거리 추천 생성", type="primary", use_container_width=True)
+    if search_clicked:
+        with st.spinner("정책·보도 검색 중"):
+            st.session_state["s02_search"] = search_sources(days, categories, keyword)
+            st.session_state.pop("s02_ideas", None)
+    search = st.session_state.get("s02_search")
+    if generate_clicked:
+        try:
+            validated_url = validate_hint_url(url_input)
+            if not search:
+                if not categories:
+                    raise ValueError("검색 범주를 하나 이상 선택하세요.")
+                with st.spinner("정책·보도 검색 중"):
+                    search = search_sources(days, categories, keyword)
+                    st.session_state["s02_search"] = search
+            with st.spinner("근거 범위 내 기사거리 구성 중"):
+                st.session_state["s02_ideas"] = recommend(facts, search, keyword, validated_url, memo)
+        except (ValueError, RuntimeError) as exc:
+            st.error(str(exc))
+        except Exception as exc:
+            st.error(f"추천 생성 실패: {type(exc).__name__}. API 연결·인증을 확인하세요.")
+    search = st.session_state.get("s02_search")
+    if search:
+        st.caption(f'검색 확인 시각: {search["retrieved_at"]} · 최근 {search["days"]}일 · 검색 항목 {len(search["sources"])}건')
+        if search["errors"]:
+            st.warning(" / ".join(search["errors"]) + " · 검색 실패는 관련 기사 부재가 아닙니다.")
+        st.info("검색 결과는 제목·발행처·발행일 메타데이터입니다. 기사 원문 내용은 검증하지 않았습니다. 검색 누락 가능성이 있습니다.")
+        with st.expander("검색된 자료 목록", expanded=True):
+            for item in search["sources"]:
+                st.markdown(f'**{item["id"]} · {item["title"]}** · {item["source_org"]} · {item["source_type"]}')
+                st.caption(f'{item["published_at"][:10]} · METADATA_ONLY')
+                st.link_button("검색 결과 열기", item["source_url"], key=f'src_{item["id"]}')
+    else:
+        st.caption("이 세션에서 아직 최신 검색을 실행하지 않았습니다. 검색·추천 버튼을 누르면 실행됩니다.")
+    st.divider()
+    st.subheader("추천 기사거리")
+    ideas = st.session_state.get("s02_ideas")
+    if ideas is None:
+        st.info("검색 결과를 검토한 뒤 'AI 기사거리 추천 생성'을 눌러주세요. 추천은 아직 준비되지 않았습니다.")
+    elif not ideas:
+        st.info("현재 조건에서 추천할 후보가 없습니다. 검색 범위나 취재 단서를 조정해 다시 시도할 수 있습니다.")
+    else:
+        refs = {s["id"]: s for s in search["sources"]}
+        for idx, idea in enumerate(ideas, 1):
+            with st.container(border=True):
+                st.caption(f'후보 {idx} · {idea["readiness"]} · 추가 취재 필요')
+                st.subheader(idea["title"])
+                st.markdown("**취재 방향**")
+                st.write(idea["angle"])
+                st.markdown("**뉴스 가치 및 기존 보도와 비교할 점**")
+                st.write(idea["news_value"])
+                st.markdown("**분석 근거**")
+                st.write(idea["evidence"])
+                st.markdown("**추가 취재·확인 항목**")
+                for gap in idea["reporting_gaps"]:
+                    st.markdown("- " + gap)
+                st.markdown("**연관 검색 결과 (본문 미확인)**")
+                for sid in idea["source_ids"]:
+                    src = refs.get(sid)
+                    if src:
+                        st.markdown(f'[{sid} · {src["title"]}]({src["source_url"]})')
+                if st.button("취재 후보로 선택", key=f"idea_{idx}"):
+                    st.session_state["s02_selected_idea"] = idea
+                    st.success("선택한 후보를 이 세션에 보관했습니다. S03 기사 작성 연결은 다음 단계에서 구현합니다.")
+    st.caption("검색 제목·기자 메모만으로 READY를 부여하지 않습니다. 원문 확인·추가 취재 및 검증된 Fact Sheet 저장은 후속 단계에서 진행합니다.")
+    st.stop()
 
 if st.session_state.get("placeholder_page"):
-    st.info(f'{st.session_state["placeholder_page"]} 기능은 아직 구현되지 않았습니다.')
+    st.info("이 화면은 아직 구현되지 않았습니다.")
     if st.button("뉴스룸 홈으로 돌아가기"):
         st.session_state.pop("placeholder_page", None)
         st.rerun()
