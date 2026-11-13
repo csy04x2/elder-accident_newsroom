@@ -1,6 +1,6 @@
 """S04 검수·승인: 원문 근거/본문 해시 확인, 자동 PASS 실패 시 승인 차단."""
 import os, json, re, hashlib, hmac
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 from sqlalchemy import text
 from openai import OpenAI
@@ -70,17 +70,30 @@ class Finding(BaseModel):
 class Review(BaseModel):
     findings:list[Finding]=Field(default_factory=list)
 
-PROMPT="""한국 데이터 저널리즘 사실 검수자. 실제 오류만 지적하고 문체·칭찬·추정 오류 제외.
-연도·지역·숫자·분모·단위, 고령인구 거주지와 사고 발생지 차이 확인.
-사고다발지역 폴리곤 수와 개별 사고 수의 혼동, 보호구역 API 누락 무시 확인.
+PROMPT="""한국 데이터 저널리즘 사실 검수자. 실제 수정할 오류만 보고하라.
+[현재 날짜]
+사용자 입력의 현재 시점이 아니라 요청에 전달된 today_kst가 실제 기준이다.
+학습 당시 날짜(예: 2024년)를 현재로 가정하지 말라.
+과거 사고연도 자료는 실제 Fact Sheet에 존재하면 '미래 데이터' 오류가 아니다.
+[숫자·분모]
+Fact Sheet의 연도·지역·사고건수·고령인구·산식과 기사 문장이 일치하는지 검사.
+'고령인구 1만 명당 사고건수'는 발생지 사고건수 ÷ 거주지 고령인구 × 10000으로 계산하는
+기술통계 지표이다. 발생지/거주지 기준이 다르다는 이유만으로 산식 오류나 허위 수치로 판정하지 말라.
+단, 실제 고령층 보행 노출량을 보정한 위험률·개인 사고 확률·인과 효과로 해석하면 오류다.
+본문에 수치가 Fact Sheet와 맞고 '고령인구 1만 명당'이라고 정확히 표시했다면 오검출 금지.
+[다른 검수]
+사고다발지역 폴리곤 수와 개별 사고 건수의 혼동, 보호구역 API 누락 무시 확인.
 근거 없는 인과·효과·정책 시행·현장 취재·인터뷰·출처 주장을 확인.
 METADATA_ONLY는 근거가 아님. VERIFIED의 대조된 원문 발췌만 외부 사실 근거.
-오류 구절을 기사에서 정확히 발췌하여 설명. 기사는 수정하지 말 것."""
+칭찬·문체 취향·추정 오류 제외. 동일 오류 중복 지적하지 말 것.
+오류 구절을 기사에서 정확히 발췌하고, 해당 Fact Sheet와 충돌하는 이유를 특정하라.
+기사는 수정하지 말 것."""
 
 def ai_findings(a):
     if not os.getenv("OPENAI_API_KEY"):raise RuntimeError("OPENAI_API_KEY 없음")
     evidence=[e["payload"] for e in a["evidence"] if e["payload"]]
-    request={"title":a["title"],"content":a["content"],"evidence":evidence}
+    request={"today_kst":datetime.now(timezone(timedelta(hours=9))).date().isoformat(),
+             "title":a["title"],"content":a["content"],"evidence":evidence}
     response=OpenAI(api_key=os.environ["OPENAI_API_KEY"],timeout=40,max_retries=0).responses.parse(
         model=os.getenv("OPENAI_MODEL","gpt-4.1-mini"),instructions=PROMPT,
         input=json.dumps(request,ensure_ascii=False,default=str),text_format=Review)

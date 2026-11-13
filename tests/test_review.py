@@ -21,3 +21,10 @@ def test_hash_changes():
 def test_no_password(monkeypatch):
     monkeypatch.delenv("EDITOR_PASSWORD_HASH",raising=False)
     assert not editor_password_valid("guess")
+
+
+def test_validation_prompt_does_not_reject_historical_year_or_descriptive_rate():
+    from newsroom.review import PROMPT
+    assert "today_kst" in PROMPT
+    assert "거주지 고령인구" in PROMPT
+    assert "미래 데이터" in PROMPT
