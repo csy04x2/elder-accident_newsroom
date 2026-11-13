@@ -284,10 +284,15 @@ zones = data["zones"]
 
 years = sorted(panel["사고연도"].dropna().astype(int).unique().tolist())
 districts = sorted(panel["자치구명"].dropna().astype(str).unique().tolist())
-with st.sidebar:
+st.markdown('<div class="eyebrow">SEOUL · ELDERLY PEDESTRIAN SAFETY</div>', unsafe_allow_html=True)
+st.title("노인보행자 교통사고 데이터 뉴스룸")
+st.markdown("**분석 조건**")
+filter_year, filter_district, _ = st.columns([1, 2, 2])
+with filter_year:
     year = st.selectbox("사고 연도", years, index=len(years) - 1, key="s01_year")
+with filter_district:
     district = st.selectbox("지역", ["서울 전체"] + districts, key="s01_district")
-    st.caption("통계는 실시간 사고 집계가 아닙니다.")
+st.caption("통계는 실시간 사고 집계가 아닙니다.")
 
 current = panel[panel["사고연도"] == year]
 previous = panel[panel["사고연도"] == year - 1]
@@ -297,8 +302,6 @@ if district != "서울 전체":
 summary = metric_summary(current, previous)
 place = "서울" if district == "서울 전체" else district
 
-st.markdown('<div class="eyebrow">SEOUL · ELDERLY PEDESTRIAN SAFETY</div>', unsafe_allow_html=True)
-st.title("노인보행자 교통사고 데이터 뉴스룸")
 st.markdown(f'<p class="intro">{escape(place)}의 공식 사고 통계와 기존 공간 분석으로 보행 안전의 사각지대를 살펴봅니다. 아래 분석은 정책 효과를 판정하는 것이 아니라 추가 취재가 필요한 지점을 찾는 자료입니다.</p>', unsafe_allow_html=True)
 st.caption(f"사고 통계 기준: {year}년 · 데이터 출처: 한국도로교통공단 TAAS, 서울 열린데이터광장 등 · 서비스의 마지막 원격 수집 시각: 미연동")
 st.caption("기존 CSV 파일을 로컬에서 읽는 상태입니다. 앱을 열거나 새로고침한 시각은 공식 자료의 갱신 시각이 아닙니다.")
