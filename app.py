@@ -67,9 +67,9 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
     districts = sorted(panel["자치구명"].dropna().unique())
     col1, col2, col3 = st.columns([1, 1, 2])
     with col1:
-        year = st.selectbox("분석 사고연도", years, index=len(years)-1, key="s02_year")
+        year = st.selectbox("분석 사고연도", years, index=years.index(st.session_state.get("s01_year")) if st.session_state.get("s01_year") in years else len(years)-1, key="s02_year")
     with col2:
-        district = st.selectbox("분석 지역", ["서울 전체"] + districts, key="s02_district")
+        district = st.selectbox("분석 지역", ["서울 전체"] + districts, index=(["서울 전체"] + districts).index(st.session_state.get("s01_district")) if st.session_state.get("s01_district") in (["서울 전체"] + districts) else 0, key="s02_district")
     with col3:
         days = st.selectbox("최근 검색 기간", [30, 90, 365], index=1, format_func=lambda n: f"최근 {n}일")
     facts = fact_sheet(panel, links, year, district)
@@ -90,7 +90,7 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
     if st.session_state.get("s02_signature") != signature:
         st.session_state["s02_signature"] = signature
         st.session_state.pop("s02_search", None)
-        st.session_state.pop("s02_ideas", None)
+        st.session_state.pop("s02_ideas", None)\n        st.session_state.pop("s02_selected_idea", None)
     left, right = st.columns([1, 1])
     with left:
         search_clicked = st.button("최신 자료 다시 검색", use_container_width=True, disabled=not categories)
@@ -187,8 +187,8 @@ zones = data["zones"]
 years = sorted(panel["사고연도"].dropna().astype(int).unique().tolist())
 districts = sorted(panel["자치구명"].dropna().astype(str).unique().tolist())
 with st.sidebar:
-    year = st.selectbox("사고 연도", years, index=len(years) - 1)
-    district = st.selectbox("지역", ["서울 전체"] + districts)
+    year = st.selectbox("사고 연도", years, index=len(years) - 1, key="s01_year")
+    district = st.selectbox("지역", ["서울 전체"] + districts, key="s01_district")
     st.caption("통계는 실시간 사고 집계가 아닙니다.")
 
 current = panel[panel["사고연도"] == year]
