@@ -1,5 +1,5 @@
 import copy
-from newsroom.review import content_hash, grounding, numeric, editor_password_valid
+from newsroom.review import digest, grounding, numeric, editor_password_valid
 
 def sample():
     return {"title":"서울 사고","content":"고령 보행자 사고 999건","idea_analysis_id":1,
@@ -15,7 +15,7 @@ def test_wrong_number():
     assert numeric(sample())[0]["category"]=="NUMBER"
 
 def test_hash_changes():
-    a=sample();before=content_hash(a);a["content"]="수정"
+    a=sample();before=digest(a);a["content"]="수정"
     assert content_hash(a)!=before
 
 def test_no_password(monkeypatch):
