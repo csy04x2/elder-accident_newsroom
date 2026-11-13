@@ -28,3 +28,6 @@ uploads/
 .idea/
 .DS_Store
 Thumbs.db
+
+# 자동 검색·로컬 파일 확인 기록
+data/updates/
