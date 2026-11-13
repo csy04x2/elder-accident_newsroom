@@ -123,7 +123,13 @@ if st.session_state.get("placeholder_page") == "AI 기사거리 추천":
         except (ValueError, RuntimeError) as exc:
             st.error(str(exc))
         except Exception as exc:
-            st.error(f"추천 생성 실패: {type(exc).__name__}. API 연결·인증을 확인하세요.")
+            st.error(f"추천 생성 실패: {type(exc).__name__}")
+            # 로컬 개발 중에는 실제 실패 위치를 확인한다. 배포 환경에는 상세 예외를 노출하지 않는다.
+            import os
+            if os.getenv("APP_ENV", "development") == "development":
+                st.exception(exc)
+            else:
+                st.caption("서버 로그에서 실패 원인을 확인하세요.")
     search = st.session_state.get("s02_search")
     if search:
         st.caption(f'검색 확인 시각: {search["retrieved_at"]} · 최근 {search["days"]}일 · 검색 항목 {len(search["sources"])}건')
