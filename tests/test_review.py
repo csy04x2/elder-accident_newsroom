@@ -16,7 +16,7 @@ def test_wrong_number():
 
 def test_hash_changes():
     a=sample();before=digest(a);a["content"]="수정"
-    assert content_hash(a)!=before
+    assert digest(a)!=before
 
 def test_no_password(monkeypatch):
     monkeypatch.delenv("EDITOR_PASSWORD_HASH",raising=False)
