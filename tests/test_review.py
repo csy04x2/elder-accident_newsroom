@@ -1,0 +1,23 @@
+import copy
+from newsroom.review import content_hash, grounding, numeric, editor_password_valid
+
+def sample():
+    return {"title":"서울 사고","content":"고령 보행자 사고 999건","idea_analysis_id":1,
+     "evidence":[{"evidence_role":"STATISTIC","analysis_id":1,"source_document_id":None,
+     "payload":{"verification_status":"PASSED","facts_json":{
+       "calculation_status":"CHECKED","accidents":132,"elderly_residents":72767,
+       "accidents_per_10000_residents":18.14,"hotspot_polygons":2,
+       "overlap_with_available_zone_boundaries":1,
+       "nonoverlap_with_available_zone_boundaries":1,
+       "unclassified_hotspot_polygons":0}}}]}
+
+def test_wrong_number():
+    assert numeric(sample())[0]["category"]=="NUMBER"
+
+def test_hash_changes():
+    a=sample();before=content_hash(a);a["content"]="수정"
+    assert content_hash(a)!=before
+
+def test_no_password(monkeypatch):
+    monkeypatch.delenv("EDITOR_PASSWORD_HASH",raising=False)
+    assert not editor_password_valid("guess")
